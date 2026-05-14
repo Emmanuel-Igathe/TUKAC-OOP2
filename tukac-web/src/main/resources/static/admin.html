@@ -25,16 +25,17 @@
       <a href="/forum.html" class="nav-item" data-page="forum.html"><span class="nav-icon">💬</span> Forum</a>
       <a href="/about.html" class="nav-item" data-page="about.html"><span class="nav-icon">ℹ️</span> About</a>
       <a href="/profile.html" class="nav-item" data-page="profile.html"><span class="nav-icon">👤</span> My Profile</a>
+      <a href="/help.html" class="nav-item" data-page="help.html"><span class="nav-icon">❓</span> Help & Support</a>
       <div id="execSection" class="hidden">
         <div class="nav-section-label">Management</div>
-        <a href="/events.html" class="nav-item"><span class="nav-icon">⚙️</span> Manage Events</a>
-        <a href="/finances.html" class="nav-item"><span class="nav-icon">⚙️</span> Manage Finances</a>
-        <a href="/blog.html" class="nav-item"><span class="nav-icon">⚙️</span> Manage Blog</a>
+        <a href="/events.html" class="nav-item" data-page="events.html"><span class="nav-icon">⚙️</span> Manage Events</a>
+        <a href="/finances.html" class="nav-item" data-page="finances.html"><span class="nav-icon">⚙️</span> Manage Finances</a>
+        <a href="/blog.html" class="nav-item" data-page="blog.html"><span class="nav-icon">⚙️</span> Manage Blog</a>
       </div>
       <div id="adminSection" class="hidden">
         <div class="nav-section-label">Admin</div>
-        <a href="/admin.html" class="nav-item" data-page="admin.html"><span class="nav-icon">👥</span> Manage Users</a>
-        <a href="/admin_logs.html" class="nav-item" data-page="admin_logs.html"><span class="nav-icon">📜</span> Audit Logs</a>
+        <a href="/admin.html" class="nav-item active" data-page="admin.html"><span class="nav-icon">👥</span> Manage Users</a>
+        <a href="/audit-logs.html" class="nav-item" data-page="audit-logs.html"><span class="nav-icon">📜</span> Audit Logs</a>
       </div>
     </nav>
     <div class="sidebar-footer">
@@ -52,9 +53,12 @@
         <div class="topbar-title">Manage Users</div>
         <div class="topbar-subtitle">Approve members and assign roles</div>
       </div>
-      <button class="btn btn-outline btn-sm" onclick="exportUsersReport()" style="display:flex;align-items:center;gap:6px;">
-        <span>📄</span> Export PDF
-      </button>
+      <div class="flex gap-2">
+        <input type="text" id="userSearch" class="form-control form-control-sm" placeholder="Search users..." style="width:200px;" oninput="debounceSearch()">
+        <button class="btn btn-outline btn-sm" onclick="exportUsersReport()" style="display:flex;align-items:center;gap:6px;">
+          <span>📄</span> Export PDF
+        </button>
+      </div>
     </header>
 
     <main class="main-content">
@@ -145,6 +149,12 @@
     loadUsers();
   });
 
+  let searchTimeout;
+  function debounceSearch() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => loadUsers(), 500);
+  }
+
   async function exportUsersReport() {
     try {
       const res = await api.get('/reports/users', { responseType: 'blob' });
@@ -161,7 +171,8 @@
   }
 
   async function loadUsers() {
-    const res = await api.get('/users');
+    const query = document.getElementById('userSearch')?.value || '';
+    const res = await api.get(`/users?search=${encodeURIComponent(query)}`);
     if (!res || !res.data.success) {
       document.getElementById('usersTableBody').innerHTML = '<tr><td colspan="6" class="text-center text-muted">Error loading users</td></tr>';
       return;

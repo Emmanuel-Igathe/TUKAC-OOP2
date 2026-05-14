@@ -9,4 +9,5 @@ import java.util.List;
 @Repository
 public interface ForumPostRepository extends JpaRepository<ForumPost, Long> {
     List<ForumPost> findAllByOrderByCreatedAtDesc();
+    List<ForumPost> findByTitleContainingIgnoreCaseOrContentContainingIgnoreCase(String title, String content);
 }

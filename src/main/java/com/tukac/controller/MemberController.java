@@ -10,12 +10,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Controller for managing club members and membership approvals.
+ * This class handles the administrative workflow for student registration.
+ */
 @RestController
 @RequestMapping("/api/members")
 public class MemberController {
 
     @Autowired private UserRepository userRepo;
 
+    /**
+     * BROWSE: Retrieves all registered members.
+     * Logic: Returns a categorized list containing both fully registered 
+     * members and those whose applications are still "PENDING".
+     */
     @GetMapping
     public ResponseEntity<?> getAllMembers() {
         Map<String, Object> response = new HashMap<>();
@@ -24,6 +33,11 @@ public class MemberController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * UPDATE: Approves a member's registration.
+     * Business Logic: Locates the user by ID and updates their status to "APPROVED",
+     * which then allows them to log in to the portal.
+     */
     @PostMapping("/{id}/approve")
     public ResponseEntity<?> approveMember(@PathVariable Long id) {
         userRepo.findById(id).ifPresent(u -> {

@@ -24,11 +24,17 @@ public class ForumController {
     @Autowired private ForumPostRepository forumPostRepository;
     @Autowired private ForumCommentRepository forumCommentRepository;
     @Autowired private UserRepository userRepository;
+    @Autowired private com.tukac.service.ActivityLogService activityLogService;
 
     // ── GET all forum posts ──────────────────────────────────────────────
     @GetMapping
-    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getPosts() {
-        List<ForumPost> posts = forumPostRepository.findAllByOrderByCreatedAtDesc();
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getPosts(@RequestParam(required = false) String search) {
+        List<ForumPost> posts;
+        if (search != null && !search.trim().isEmpty()) {
+            posts = forumPostRepository.findByTitleContainingIgnoreCaseOrContentContainingIgnoreCase(search.trim(), search.trim());
+        } else {
+            posts = forumPostRepository.findAllByOrderByCreatedAtDesc();
+        }
         List<Map<String, Object>> result = new ArrayList<>();
         
         for (ForumPost post : posts) {
@@ -69,6 +75,7 @@ public class ForumController {
 
         ForumPost saved = forumPostRepository.save(post);
         userRepository.findById(userId).ifPresent(u -> saved.setAuthorName(u.getName()));
+        activityLogService.log("CREATE_FORUM", "Started discussion: " + saved.getTitle());
         return ResponseEntity.ok(ApiResponse.ok("Discussion posted", saved));
     }
 
@@ -82,7 +89,7 @@ public class ForumController {
         ForumPost post = opt.get();
         boolean isOwner = post.getAuthorId().equals(userId);
         boolean isAdmin = auth.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_CHAIRPERSON"));
+                .anyMatch(a -> a.getAuthority().matches("ROLE_(CHAIRPERSON|VICE-CHAIRPERSON)"));
 
         if (!isOwner && !isAdmin) {
             return ResponseEntity.status(403).body(ApiResponse.error("Not authorised to delete this post"));
@@ -90,6 +97,7 @@ public class ForumController {
 
         forumCommentRepository.deleteAllByPostId(id);
         forumPostRepository.deleteById(id);
+        activityLogService.log("DELETE_FORUM", "Deleted discussion: " + post.getTitle());
         return ResponseEntity.ok(ApiResponse.ok("Post deleted", null));
     }
 
@@ -156,7 +164,7 @@ public class ForumController {
         ForumComment comment = opt.get();
         boolean isOwner = comment.getAuthorId().equals(userId);
         boolean isAdmin = auth.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_CHAIRPERSON"));
+                .anyMatch(a -> a.getAuthority().matches("ROLE_(CHAIRPERSON|VICE-CHAIRPERSON)"));
 
         if (!isOwner && !isAdmin) {
             return ResponseEntity.status(403).body(ApiResponse.error("Not authorised to delete this comment"));

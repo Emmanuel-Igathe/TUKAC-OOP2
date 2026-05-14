@@ -21,16 +21,34 @@ import java.util.*;
 @RequestMapping("/api/blog")
 public class BlogController {
 
+    /**
+     * Repositories are automatically injected by Spring's Dependency Injection.
+     * They handle the data persistence for blog posts, likes, comments, and user info.
+     */
     @Autowired private BlogPostRepository blogPostRepository;
     @Autowired private BlogCommentRepository commentRepository;
     @Autowired private BlogLikeRepository likeRepository;
     @Autowired private UserRepository userRepository;
+    @Autowired private com.tukac.service.ActivityLogService activityLogService;
 
-    // ── GET all posts ──────────────────────────────────────────────
+    /**
+     * BROWSE/SEARCH: Retrieves all blog posts.
+     * Includes logic to check if the current user has liked each post.
+     * Maps the database entities to a list of data-transfer maps for the frontend.
+     */
     @GetMapping
-    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getPosts(Authentication auth) {
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getPosts(
+            @RequestParam(required = false) String search,
+            Authentication auth) {
         Long userId = auth != null ? (Long) auth.getCredentials() : null;
-        List<BlogPost> posts = blogPostRepository.findAllByOrderByPublishedAtDesc();
+        List<BlogPost> posts;
+        if (search != null && !search.isEmpty()) {
+            // Search logic using repository finders
+            posts = blogPostRepository.findByTitleContainingIgnoreCaseOrBodyContainingIgnoreCase(search, search);
+        } else {
+            // Default: List all posts from newest to oldest
+            posts = blogPostRepository.findAllByOrderByPublishedAtDesc();
+        }
 
         List<Map<String, Object>> result = new ArrayList<>();
         for (BlogPost post : posts) {
@@ -44,10 +62,14 @@ public class BlogController {
             map.put("mediaUrl", post.getMediaUrl());
             map.put("mediaType", post.getMediaType());
             map.put("authorId", post.getAuthorId());
+            
+            // Enrich data with author name
             if (post.getAuthorId() != null) {
                 userRepository.findById(post.getAuthorId())
                         .ifPresent(u -> map.put("authorName", u.getName()));
             }
+            
+            // Add interaction statistics
             map.put("likeCount", likeRepository.countByPostId(post.getId()));
             map.put("commentCount", commentRepository.countByPostId(post.getId()));
             map.put("liked", userId != null && likeRepository.existsByPostIdAndUserId(post.getId(), userId));
@@ -56,7 +78,11 @@ public class BlogController {
         return ResponseEntity.ok(ApiResponse.ok(result));
     }
 
-    // ── CREATE post ────────────────────────────────────────────────
+    /**
+     * ADD: Creates a new blog post.
+     * Restricted to specific administrative roles via @PreAuthorize.
+     * Automatically captures the author's ID from the authentication token.
+     */
     @PostMapping
     @PreAuthorize("hasAnyRole('CHAIRPERSON','VICE-CHAIRPERSON','SECRETARY')")
     public ResponseEntity<ApiResponse<BlogPost>> createPost(@RequestBody Map<String, Object> payload, Authentication auth) {
@@ -67,6 +93,7 @@ public class BlogController {
         String mediaUrl = (String) payload.get("mediaUrl");
         String mediaType = (String) payload.get("mediaType");
 
+        // Basic validation
         if (title == null || title.isBlank()) return ResponseEntity.badRequest().body(ApiResponse.error("Title is required"));
         if (content == null || content.isBlank()) return ResponseEntity.badRequest().body(ApiResponse.error("Content is required"));
 
@@ -80,10 +107,16 @@ public class BlogController {
 
         BlogPost saved = blogPostRepository.save(post);
         userRepository.findById(userId).ifPresent(u -> saved.setAuthorName(u.getName()));
+        
+        // Log activity for audit trail
+        activityLogService.log("CREATE_BLOG", "Published blog post: " + saved.getTitle());
         return ResponseEntity.ok(ApiResponse.ok("Post published", saved));
     }
 
-    // ── UPDATE post ────────────────────────────────────────────────
+    /**
+     * UPDATE/EDIT: Modifies an existing blog post.
+     * Checks if the post exists and then updates allowed fields.
+     */
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('CHAIRPERSON','VICE-CHAIRPERSON','SECRETARY')")
     public ResponseEntity<ApiResponse<BlogPost>> updatePost(@PathVariable Long id, @RequestBody Map<String, Object> payload) {
@@ -105,21 +138,30 @@ public class BlogController {
         if (saved.getAuthorId() != null) {
             userRepository.findById(saved.getAuthorId()).ifPresent(u -> saved.setAuthorName(u.getName()));
         }
+        activityLogService.log("UPDATE_BLOG", "Updated blog post: " + saved.getTitle());
         return ResponseEntity.ok(ApiResponse.ok("Post updated", saved));
     }
 
-    // ── DELETE post ────────────────────────────────────────────────
+    /**
+     * DELETE: Removes a blog post and its associated likes/comments.
+     * Cascading delete is handled manually here for data integrity.
+     */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('CHAIRPERSON','VICE-CHAIRPERSON','SECRETARY')")
     public ResponseEntity<ApiResponse<Void>> deletePost(@PathVariable Long id) {
-        if (!blogPostRepository.existsById(id)) return ResponseEntity.notFound().build();
         likeRepository.deleteAllByPostId(id);
         commentRepository.deleteAllByPostId(id);
+        BlogPost post = blogPostRepository.findById(id).get();
         blogPostRepository.deleteById(id);
+        activityLogService.log("DELETE_BLOG", "Deleted blog post: " + post.getTitle());
         return ResponseEntity.ok(ApiResponse.ok("Post deleted", null));
     }
 
-    // ── UPLOAD media ───────────────────────────────────────────────
+    /**
+     * MEDIA HANDLING: Converts uploaded files into Base64 data URLs.
+     * This allows the club to store images/videos directly in the SQLite database without 
+     * complex filesystem management.
+     */
     @PostMapping("/upload")
     @PreAuthorize("hasAnyRole('CHAIRPERSON','VICE-CHAIRPERSON','SECRETARY')")
     public ResponseEntity<ApiResponse<Map<String, String>>> uploadMedia(@RequestParam("file") MultipartFile file) {
@@ -130,6 +172,7 @@ public class BlogController {
             else if (contentType != null && contentType.startsWith("image/")) mediaType = "image";
             else return ResponseEntity.badRequest().body(ApiResponse.error("Only image or video files are allowed"));
 
+            // Conversion to Base64
             String base64 = Base64.getEncoder().encodeToString(file.getBytes());
             String dataUrl = "data:" + contentType + ";base64," + base64;
             return ResponseEntity.ok(ApiResponse.ok("File uploaded", Map.of("mediaUrl", dataUrl, "mediaType", mediaType)));
@@ -138,7 +181,10 @@ public class BlogController {
         }
     }
 
-    // ── LIKE / UNLIKE ─────────────────────────────────────────────
+    /**
+     * SOCIAL INTERACTION: Likes or Unlikes a post.
+     * Checks if a like already exists for the user; if so, it removes it (Unlike).
+     */
     @PostMapping("/{id}/like")
     public ResponseEntity<ApiResponse<Map<String, Object>>> toggleLike(@PathVariable Long id, Authentication auth) {
         Long userId = (Long) auth.getCredentials();
@@ -157,7 +203,9 @@ public class BlogController {
         return ResponseEntity.ok(ApiResponse.ok(liked ? "Liked" : "Unliked", Map.of("liked", liked, "likeCount", count)));
     }
 
-    // ── GET comments ───────────────────────────────────────────────
+    /**
+     * COMMENTS: Retrieves all comments for a specific post.
+     */
     @GetMapping("/{id}/comments")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getComments(@PathVariable Long id) {
         List<BlogComment> comments = commentRepository.findByPostIdOrderByCreatedAtAsc(id);
@@ -175,7 +223,9 @@ public class BlogController {
         return ResponseEntity.ok(ApiResponse.ok(result));
     }
 
-    // ── POST comment ───────────────────────────────────────────────
+    /**
+     * COMMENTS: Adds a new comment to a post.
+     */
     @PostMapping("/{id}/comments")
     public ResponseEntity<ApiResponse<Map<String, Object>>> addComment(
             @PathVariable Long id,
@@ -204,7 +254,10 @@ public class BlogController {
         return ResponseEntity.ok(ApiResponse.ok("Comment added", result));
     }
 
-    // ── DELETE comment (own comment, or management role) ──────────
+    /**
+     * COMMENTS: Deletes a comment.
+     * Authorization Check: Only the comment author or a club executive can delete comments.
+     */
     @DeleteMapping("/{postId}/comments/{commentId}")
     public ResponseEntity<ApiResponse<Void>> deleteComment(
             @PathVariable Long postId,
@@ -216,6 +269,8 @@ public class BlogController {
 
         BlogComment comment = opt.get();
         boolean isOwner = comment.getAuthorId().equals(userId);
+        
+        // Role check logic for complex authorisation
         boolean isManager = auth.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().matches("ROLE_(CHAIRPERSON|VICE-CHAIRPERSON|SECRETARY)"));
 

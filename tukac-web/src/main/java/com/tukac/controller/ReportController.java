@@ -52,12 +52,21 @@ public class ReportController {
     }
 
     @GetMapping("/finances")
-    public ResponseEntity<byte[]> generateFinanceReport() {
+    public ResponseEntity<byte[]> generateFinanceReport(
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
         try {
             InputStream reportStream = getClass().getResourceAsStream("/reports/finance_report.jrxml");
             JasperReport jasperReport = JasperCompileManager.compileReport(reportStream);
             
-            JRBeanCollectionDataSource dataSource = new JRBeanCollectionDataSource(transactionRepository.findAllByOrderByTransactionDateDesc());
+            java.util.List<com.tukac.model.Transaction> dataList;
+            if (startDate != null && endDate != null && !startDate.isBlank() && !endDate.isBlank()) {
+                dataList = transactionRepository.findByTransactionDateBetweenOrderByTransactionDateDesc(startDate, endDate);
+            } else {
+                dataList = transactionRepository.findAllByOrderByTransactionDateDesc();
+            }
+
+            JRBeanCollectionDataSource dataSource = new JRBeanCollectionDataSource(dataList);
             Map<String, Object> parameters = new HashMap<>();
             parameters.put("ReportTitle", "TUKAC - Financial Statement");
             parameters.put("GeneratedBy", "Treasury Office");

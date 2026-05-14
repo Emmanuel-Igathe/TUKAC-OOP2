@@ -16,14 +16,22 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/users")
-@PreAuthorize("hasRole('CHAIRPERSON')")
+@PreAuthorize("hasAnyRole('CHAIRPERSON', 'VICE-CHAIRPERSON')")
 public class UserController {
 
     @Autowired private UserRepository userRepository;
+    @Autowired private com.tukac.service.ActivityLogService activityLogService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getUsers() {
-        List<Map<String, Object>> users = userRepository.findAll().stream().map(u -> {
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getUsers(@RequestParam(required = false) String search) {
+        List<User> userList;
+        if (search != null && !search.isEmpty()) {
+            userList = userRepository.findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(search, search);
+        } else {
+            userList = userRepository.findAll();
+        }
+
+        List<Map<String, Object>> users = userList.stream().map(u -> {
             Map<String, Object> map = new HashMap<>();
             map.put("id", u.getId());
             map.put("name", u.getName());
@@ -49,6 +57,7 @@ public class UserController {
         User user = opt.get();
         user.setIsApproved(1);
         userRepository.save(user);
+        activityLogService.log("APPROVE_USER", "Approved user: " + user.getEmail());
         return ResponseEntity.ok(ApiResponse.ok("User approved successfully", null));
     }
 
@@ -59,6 +68,7 @@ public class UserController {
         User user = opt.get();
         user.setIsApproved(0);
         userRepository.save(user);
+        activityLogService.log("REJECT_USER", "Rejected/Suspended user: " + user.getEmail());
         return ResponseEntity.ok(ApiResponse.ok("User rejected", null));
     }
 
@@ -74,15 +84,19 @@ public class UserController {
         Optional<User> opt = userRepository.findById(id);
         if (opt.isEmpty()) return ResponseEntity.notFound().build();
         User user = opt.get();
+        String oldRole = user.getRole();
         user.setRole(newRole);
         userRepository.save(user);
+        activityLogService.log("CHANGE_ROLE", "Changed user role: " + user.getEmail() + " (" + oldRole + " -> " + newRole + ")");
         return ResponseEntity.ok(ApiResponse.ok("Role updated to " + newRole, null));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable Long id) {
         if (!userRepository.existsById(id)) return ResponseEntity.notFound().build();
+        User user = userRepository.findById(id).get();
         userRepository.deleteById(id);
+        activityLogService.log("DELETE_USER", "Deleted user account: " + user.getEmail());
         return ResponseEntity.ok(ApiResponse.ok("User deleted", null));
     }
 }

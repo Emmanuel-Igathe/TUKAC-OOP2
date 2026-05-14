@@ -19,6 +19,8 @@ public class ActivityLog {
     private String details;
     
     private String ipAddress;
+
+    @com.fasterxml.jackson.annotation.JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime timestamp = LocalDateTime.now();
 
     public ActivityLog() {}

@@ -30,8 +30,8 @@ public class SecurityConfig {
                 .requestMatchers("/", "/index.html", "/login.html", "/home.html", "/*.html", "/css/**", "/js/**", "/favicon.ico", "/logo.svg").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/about").authenticated()
 
-                // Chairperson only — user management
-                .requestMatchers("/api/users/**").hasRole("CHAIRPERSON")
+                // Admin roles — user management & audit logs
+                .requestMatchers("/api/users/**", "/api/admin/logs", "/api/admin/logs/**").hasAnyRole("CHAIRPERSON", "VICE-CHAIRPERSON")
 
                 // GET requests — any authenticated user can read
                 .requestMatchers(HttpMethod.GET, "/api/events", "/api/events/**").authenticated()

@@ -24,14 +24,17 @@
       <a href="/forum.html" class="nav-item" data-page="forum.html"><span class="nav-icon">💬</span> Forum</a>
       <a href="/about.html" class="nav-item" data-page="about.html"><span class="nav-icon">ℹ️</span> About</a>
       <a href="/profile.html" class="nav-item" data-page="profile.html"><span class="nav-icon">👤</span> My Profile</a>
+      <a href="/help.html" class="nav-item" data-page="help.html"><span class="nav-icon">❓</span> Help & Support</a>
       <div id="execSection" class="hidden">
         <div class="nav-section-label">Management</div>
         <a href="/events.html" class="nav-item"><span class="nav-icon">⚙️</span> Manage Events</a>
-        <a href="/finances.html" class="nav-item"><span class="nav-icon">⚙️</span> Manage Finances</a>
+        <a href="/finances.html" class="nav-item active"><span class="nav-icon">⚙️</span> Manage Finances</a>
+        <a href="/blog.html" class="nav-item"><span class="nav-icon">⚙️</span> Manage Blog</a>
       </div>
       <div id="adminSection" class="hidden">
         <div class="nav-section-label">Admin</div>
         <a href="/admin.html" class="nav-item" data-page="admin.html"><span class="nav-icon">👥</span> Manage Users</a>
+        <a href="/audit-logs.html" class="nav-item" data-page="audit-logs.html"><span class="nav-icon">📜</span> Audit Logs</a>
       </div>
     </nav>
     <div class="sidebar-footer">
@@ -49,11 +52,17 @@
         <div class="topbar-title">Finances</div>
         <div class="topbar-subtitle">Club income and expense tracking</div>
       </div>
-      <div class="flex gap-2">
+      <div class="flex gap-2" style="align-items:center;">
+        <input type="text" id="financeSearch" class="form-control form-control-sm" placeholder="Search finances..." style="width:200px;" oninput="debounceSearch()">
+        <div class="flex gap-2" id="reportFilters" style="background:rgba(0,0,0,0.03); padding:4px 8px; border-radius:8px; border:1px solid var(--border);">
+          <input type="date" id="reportStart" class="form-control form-control-sm" style="width:130px; border:none; background:transparent;" title="Start Date">
+          <span style="color:var(--text-muted); padding-top:4px;">to</span>
+          <input type="date" id="reportEnd" class="form-control form-control-sm" style="width:130px; border:none; background:transparent;" title="End Date">
+        </div>
         <button class="btn btn-outline btn-sm" onclick="exportFinanceReport()" style="display:flex;align-items:center;gap:6px;">
           <span>📄</span> Export PDF
         </button>
-        <button class="btn btn-primary btn-sm hidden" id="addTxBtn" onclick="document.getElementById('txModal').classList.remove('hidden')">+ Add Transaction</button>
+        <button class="btn btn-primary btn-sm hidden" id="addTxBtn" onclick="openTxModal()">+ Add Transaction</button>
       </div>
     </header>
     <main class="main-content">
@@ -84,11 +93,12 @@
 <div class="modal-overlay hidden" id="txModal">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title">Add Transaction</div>
-      <button class="modal-close" onclick="document.getElementById('txModal').classList.add('hidden')">✕</button>
+      <div class="modal-title" id="modalTitle">Add Transaction</div>
+      <button class="modal-close" onclick="closeTxModal()">✕</button>
     </div>
     <div id="txAlert" class="alert hidden"></div>
     <form id="txForm" onsubmit="handleTxSubmit(event)">
+      <input type="hidden" id="txId"/>
       <div class="form-group"><label>Type *</label>
         <select id="txType" class="form-control"><option value="income">Income</option><option value="expense">Expense</option></select>
       </div>
@@ -99,8 +109,8 @@
         <div class="form-group"><label>Date *</label><input type="date" id="txDate" class="form-control" required/></div>
       </div>
       <div class="flex gap-2" style="margin-top:8px;">
-        <button type="submit" class="btn btn-primary" id="txSubmitBtn">Record</button>
-        <button type="button" class="btn btn-outline" onclick="document.getElementById('txModal').classList.add('hidden')">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="txSubmitBtn">Save Transaction</button>
+        <button type="button" class="btn btn-outline" onclick="closeTxModal()">Cancel</button>
       </div>
     </form>
   </div>
@@ -112,6 +122,7 @@
   const user = getUser();
   const isExec = user && ['chairperson','vice-chairperson','treasurer'].includes(user.role);
   let allTx = [];
+  let editingId = null;
 
   document.addEventListener('DOMContentLoaded', () => {
     initSidebar();
@@ -120,9 +131,20 @@
     loadTransactions();
   });
 
+  let searchTimeout;
+  function debounceSearch() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => loadTransactions(), 500);
+  }
+
   async function exportFinanceReport() {
+    const start = document.getElementById('reportStart').value;
+    const end = document.getElementById('reportEnd').value;
+    let url = '/reports/finances';
+    if (start && end) url += `?startDate=${start}&endDate=${end}`;
+
     try {
-      const res = await api.get('/reports/finances', { responseType: 'blob' });
+      const res = await api.get(url, { responseType: 'blob' });
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -136,7 +158,8 @@
   }
 
   async function loadTransactions() {
-    const res = await api.get('/transactions');
+    const query = document.getElementById('financeSearch')?.value || '';
+    const res = await api.get(`/transactions?search=${encodeURIComponent(query)}`);
     if (!res || !res.data.success) return;
     const { transactions, balance, totalIncome, totalExpense } = res.data.data;
     allTx = transactions;
@@ -157,7 +180,11 @@
         <td>${t.category ? `<span class="badge badge-muted">${t.category}</span>` : '—'}</td>
         <td><span class="badge ${t.type==='income'?'badge-success':'badge-danger'}">${t.type}</span></td>
         <td class="${t.type==='income'?'text-success':'text-danger'}" style="font-weight:600">${t.type==='income'?'+':'-'}${formatCurrency(t.amount)}</td>
-        ${isExec ? `<td><button class="btn btn-danger btn-sm" onclick="deleteTx(${t.id})">🗑</button></td>` : '<td></td>'}
+        ${isExec ? `
+          <td class="flex gap-2">
+            <button class="btn btn-outline btn-sm" onclick='openTxModal(${JSON.stringify(t).replace(/'/g, "&apos;")})'>✏️</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteTx(${t.id})">🗑</button>
+          </td>` : '<td></td>'}
       </tr>`).join('');
   }
 
@@ -166,23 +193,45 @@
     renderTable(type ? allTx.filter(t => t.type === type) : allTx);
   }
 
+  function openTxModal(tx = null) {
+    editingId = tx ? tx.id : null;
+    document.getElementById('modalTitle').textContent = tx ? 'Edit Transaction' : 'Add Transaction';
+    document.getElementById('txId').value = tx ? tx.id : '';
+    document.getElementById('txType').value = tx ? tx.type : 'income';
+    document.getElementById('txDesc').value = tx ? tx.description : '';
+    document.getElementById('txCategory').value = tx ? tx.category : '';
+    document.getElementById('txAmount').value = tx ? tx.amount : '';
+    document.getElementById('txDate').value = tx ? tx.transactionDate : new Date().toISOString().split('T')[0];
+    document.getElementById('txModal').classList.remove('hidden');
+    document.getElementById('txAlert').classList.add('hidden');
+  }
+
+  function closeTxModal() {
+    document.getElementById('txModal').classList.add('hidden');
+    document.getElementById('txForm').reset();
+  }
+
   async function handleTxSubmit(e) {
     e.preventDefault();
     const btn = document.getElementById('txSubmitBtn');
     btn.disabled = true;
-    const res = await api.post('/transactions', {
+
+    const payload = {
       type: document.getElementById('txType').value,
       description: document.getElementById('txDesc').value.trim(),
       category: document.getElementById('txCategory').value.trim(),
       amount: parseFloat(document.getElementById('txAmount').value),
       transactionDate: document.getElementById('txDate').value
-    });
+    };
+
+    const res = editingId 
+      ? await api.put(`/transactions/${editingId}`, payload)
+      : await api.post('/transactions', payload);
+
     btn.disabled = false;
     if (res && res.data.success) {
-      document.getElementById('txModal').classList.add('hidden');
-      document.getElementById('txForm').reset();
-      document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
-      showAlert(document.getElementById('pageAlert'), 'success', 'Transaction recorded!');
+      closeTxModal();
+      showAlert(document.getElementById('pageAlert'), 'success', editingId ? 'Transaction updated!' : 'Transaction recorded!');
       await loadTransactions();
     } else {
       showAlert(document.getElementById('txAlert'), 'error', res?.data?.message || 'Failed');

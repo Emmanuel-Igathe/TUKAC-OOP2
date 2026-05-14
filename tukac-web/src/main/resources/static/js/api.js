@@ -131,39 +131,91 @@ function setEmpty(container, icon, title, subtitle = '') {
 }
 
 // Render sidebar user info + active nav
+// Render sidebar user info + active nav + footer + toggle
 function initSidebar() {
   const user = getUser();
   if (!user) return;
 
+  const sidebar = document.querySelector('.sidebar');
+  const topbar = document.querySelector('.topbar');
+  const mainWrapper = document.querySelector('.main-wrapper');
+
+  // 1. User Info
   const nameEl = document.getElementById('userName');
   const roleEl = document.getElementById('userRole');
   const avatarEl = document.getElementById('userAvatar');
-
   if (nameEl) nameEl.textContent = user.name;
   if (roleEl) roleEl.textContent = user.role;
   if (avatarEl) avatarEl.textContent = user.name.charAt(0).toUpperCase();
 
-  // Highlight active nav
-  const currentPage = window.location.pathname.split('/').pop() || 'index.html';
-  document.querySelectorAll('.nav-item[data-page]').forEach(item => {
-    if (item.dataset.page === currentPage) {
+  // 2. Wrap Nav Text for collapsing
+  document.querySelectorAll('.nav-item').forEach(item => {
+    if (!item.querySelector('.nav-text')) {
+      const icon = item.querySelector('.nav-icon');
+      if (icon) {
+        const text = item.childNodes[item.childNodes.length - 1].textContent.trim();
+        item.lastChild.remove();
+        const span = document.createElement('span');
+        span.className = 'nav-text';
+        span.textContent = text;
+        item.appendChild(span);
+      }
+    }
+  });
+
+  // 3. Highlight active nav
+  const currentPage = window.location.pathname.split('/').pop() || 'dashboard.html';
+  document.querySelectorAll('.nav-item').forEach(item => {
+    const href = item.getAttribute('href');
+    if (href && href.includes(currentPage)) {
       item.classList.add('active');
     }
   });
 
-  // Management roles: can create/edit events, finances, blog
-  const MANAGEMENT_ROLES = ['chairperson','vice-chairperson','secretary','treasurer'];
-  const CHAIRPERSON_ONLY = ['chairperson'];
+  // 4. Handle Collapsible Sidebar
+  if (sidebar && topbar) {
+    if (!document.querySelector('.sidebar-toggle')) {
+      const leftGroup = document.createElement('div');
+      leftGroup.className = 'topbar-left';
+      const toggleBtn = document.createElement('button');
+      toggleBtn.className = 'sidebar-toggle';
+      toggleBtn.innerHTML = '☰';
+      toggleBtn.onclick = () => {
+        sidebar.classList.toggle('collapsed');
+        localStorage.setItem('sidebar_collapsed', sidebar.classList.contains('collapsed'));
+      };
+      const titleGroup = topbar.querySelector('div:first-child');
+      leftGroup.appendChild(toggleBtn);
+      leftGroup.appendChild(titleGroup);
+      topbar.prepend(leftGroup);
+    }
+    if (localStorage.getItem('sidebar_collapsed') === 'true') {
+      sidebar.classList.add('collapsed');
+    }
+  }
 
-  // Show/hide management and admin sections
+  // 5. Inject Footer if missing
+  if (mainWrapper && !document.querySelector('.app-footer')) {
+    const footer = document.createElement('footer');
+    footer.className = 'app-footer';
+    footer.innerHTML = `
+      <div>&copy; 2026 <strong>TUK Ability Club</strong>. All rights reserved.</div>
+      <div class="footer-links">
+        <a href="/help.html">Help Center</a>
+        <a href="/about.html">About Us</a>
+        <a href="/profile.html">My Account</a>
+      </div>
+    `;
+    mainWrapper.appendChild(footer);
+  }
+
+  // 6. Management roles: can create/edit events, finances, blog
+  const MANAGEMENT_ROLES = ['chairperson','vice-chairperson','secretary','treasurer'];
+  const ADMIN_ROLES = ['chairperson', 'vice-chairperson'];
   const execSection = document.getElementById('execSection');
   const adminSection = document.getElementById('adminSection');
-  if (execSection) {
-    execSection.classList.toggle('hidden', !MANAGEMENT_ROLES.includes(user.role));
-  }
-  if (adminSection) {
-    adminSection.classList.toggle('hidden', !CHAIRPERSON_ONLY.includes(user.role));
-  }
+  if (execSection) execSection.classList.toggle('hidden', !MANAGEMENT_ROLES.includes(user.role));
+  if (adminSection) adminSection.classList.toggle('hidden', !ADMIN_ROLES.includes(user.role));
 }
 
 function logout() {

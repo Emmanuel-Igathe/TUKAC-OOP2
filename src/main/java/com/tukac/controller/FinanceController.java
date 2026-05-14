@@ -14,6 +14,10 @@ import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Controller for tracking club finances.
+ * Manages income and expenses using high-precision calculations.
+ */
 @RestController
 @RequestMapping("/api/finance")
 public class FinanceController {
@@ -21,6 +25,11 @@ public class FinanceController {
     @Autowired private TransactionRepository transRepo;
     @Autowired private UserRepository userRepo;
 
+    /**
+     * REPORTING: Retrieves all transactions and calculates the balance.
+     * Logic: Uses aggregate database functions (sumByType) to calculate 
+     * total income and expenses efficiently.
+     */
     @GetMapping
     public ResponseEntity<?> getFinances() {
         Map<String, Object> response = new HashMap<>();
@@ -33,6 +42,11 @@ public class FinanceController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * ADD: Records a new income or expense.
+     * Security: Identifies the currently logged-in user to attribute 
+     * the record for accountability.
+     */
     @PostMapping
     public ResponseEntity<?> createTransaction(@RequestBody Transaction transaction, @AuthenticationPrincipal UserDetails principal) {
         User user = userRepo.findByEmail(principal.getUsername()).orElseThrow();

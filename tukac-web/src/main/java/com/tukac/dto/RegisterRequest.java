@@ -1,10 +1,28 @@
 package com.tukac.dto;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+/**
+ * Data Transfer Object for Registration.
+ * Includes Jakarta Validation annotations to ensure data integrity.
+ */
 public class RegisterRequest {
+    @NotBlank(message = "Full name is required")
     private String name;
+
+    @NotBlank(message = "Student ID is required")
     private String studentId;
+
+    @NotBlank(message = "Email is required")
+    @Email(message = "Please provide a valid email address")
     private String email;
+
+    @NotBlank(message = "Password is required")
+    @Size(min = 6, message = "Password must be at least 6 characters long")
     private String password;
+
     private String contact;
 
     // Disability fields
@@ -13,6 +31,7 @@ public class RegisterRequest {
     private String ncpwdNumber;
 
     // Passport photo (base64 data URL)
+    @NotBlank(message = "Passport photo is required")
     private String passportPhoto;
 
     public RegisterRequest() {}

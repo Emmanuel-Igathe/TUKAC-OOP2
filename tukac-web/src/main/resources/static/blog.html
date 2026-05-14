@@ -69,6 +69,8 @@
     }
     .comment-input-row input:focus { border-color:var(--navy); }
     .empty-comments { text-align:center; padding:20px; color:var(--text-muted); font-size:13px; }
+    
+    .empty-comments { text-align:center; padding:20px; color:var(--text-muted); font-size:13px; }
   </style>
 </head>
 <body>
@@ -89,15 +91,17 @@
       <a href="/forum.html" class="nav-item" data-page="forum.html"><span class="nav-icon">💬</span> Forum</a>
       <a href="/about.html" class="nav-item" data-page="about.html"><span class="nav-icon">ℹ️</span> About</a>
       <a href="/profile.html" class="nav-item" data-page="profile.html"><span class="nav-icon">👤</span> My Profile</a>
+      <a href="/help.html" class="nav-item" data-page="help.html"><span class="nav-icon">❓</span> Help & Support</a>
       <div id="execSection" class="hidden">
         <div class="nav-section-label">Management</div>
         <a href="/events.html" class="nav-item"><span class="nav-icon">⚙️</span> Manage Events</a>
         <a href="/finances.html" class="nav-item"><span class="nav-icon">⚙️</span> Manage Finances</a>
-        <a href="/blog.html" class="nav-item"><span class="nav-icon">⚙️</span> Manage Blog</a>
+        <a href="/blog.html" class="nav-item active"><span class="nav-icon">⚙️</span> Manage Blog</a>
       </div>
       <div id="adminSection" class="hidden">
         <div class="nav-section-label">Admin</div>
         <a href="/admin.html" class="nav-item" data-page="admin.html"><span class="nav-icon">👥</span> Manage Users</a>
+        <a href="/audit-logs.html" class="nav-item" data-page="audit-logs.html"><span class="nav-icon">📜</span> Audit Logs</a>
       </div>
     </nav>
     <div class="sidebar-footer">
@@ -115,7 +119,10 @@
         <div class="topbar-title">Club Blog</div>
         <div class="topbar-subtitle">News, articles, and announcements</div>
       </div>
-      <button class="btn btn-primary btn-sm hidden" id="addBlogBtn" onclick="openBlogModal(null)">+ New Post</button>
+      <div class="flex gap-2">
+        <input type="text" id="blogSearch" class="form-control form-control-sm" placeholder="Search blog..." style="width:200px;" oninput="debounceSearch()">
+        <button class="btn btn-primary btn-sm hidden" id="addBlogBtn" onclick="openBlogModal(null)">+ New Post</button>
+      </div>
     </header>
 
     <main class="main-content">
@@ -223,9 +230,16 @@
     loadPosts();
   });
 
+  let searchTimeout;
+  function debounceSearch() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => loadPosts(), 500);
+  }
+
   async function loadPosts() {
     const grid = document.getElementById('blogGrid');
-    const res = await api.get('/blog');
+    const query = document.getElementById('blogSearch')?.value || '';
+    const res = await api.get(`/blog?search=${encodeURIComponent(query)}`);
     if (!res || !res.data.success) { setEmpty(grid, '❌', 'Failed to load posts', res?.data?.message); return; }
     const posts = res.data.data;
     if (!posts.length) { setEmpty(grid, '✍️', 'No posts yet', 'Check back later for club news!'); return; }
@@ -245,19 +259,23 @@
         </div>
 
         <!-- Like & Comment row -->
-        <div class="post-actions">
-          <button class="like-btn ${p.liked ? 'liked' : ''}" id="like-btn-${p.id}" onclick="toggleLike(${p.id})">
-            ❤️ <span id="like-count-${p.id}">${p.likeCount}</span>
-          </button>
-          <button class="comment-btn" onclick="openReadPost(${safeJson(p)})">
-            💬 <span>${p.commentCount}</span>
-          </button>
-          <div style="flex:1;"></div>
-          <button class="btn btn-outline btn-sm" onclick="openReadPost(${safeJson(p)})">Read More</button>
+        <div class="post-actions" style="flex-direction: column; align-items: stretch; gap: 10px; margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px;">
+          <div class="flex items-center justify-between">
+            <div class="flex gap-2">
+              <button class="like-btn ${p.liked ? 'liked' : ''}" id="like-btn-${p.id}" onclick="toggleLike(${p.id})">
+                ❤️ <span id="like-count-${p.id}">${p.likeCount}</span>
+              </button>
+              <button class="comment-btn" onclick="openReadPost(${safeJson(p)})">
+                💬 <span>${p.commentCount}</span>
+              </button>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="openReadPost(${safeJson(p)})">Read More</button>
+          </div>
           ${isExec ? `
-            <button class="btn btn-primary btn-sm" onclick="openBlogModal(${safeJson(p)})" title="Edit">✏️</button>
-            <button class="btn btn-danger btn-sm" onclick="deletePost(${p.id})" title="Delete">🗑</button>
-          ` : ''}
+            <div class="flex gap-2 w-full" style="border-top: 1px solid var(--border); padding-top: 10px; margin-top: 2px;">
+              <button class="btn btn-outline btn-sm" style="flex:1" onclick="openBlogModal(${safeJson(p)})">✏️ Edit</button>
+              <button class="btn btn-danger btn-sm" style="flex:1" onclick="deletePost(${p.id})">🗑 Delete</button>
+            </div>` : ''}
         </div>
       </div>`).join('');
   }

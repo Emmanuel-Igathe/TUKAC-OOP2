@@ -3,14 +3,23 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Help & Documentation | TUKAC Portal</title>
+  <title>Help & Support | TUKAC Portal</title>
   <link rel="stylesheet" href="/css/style.css"/>
   <style>
-    .help-section { margin-bottom: 40px; }
-    .help-section h2 { border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 20px; }
-    .help-card { background: var(--card-bg); border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; }
-    .help-card h3 { color: var(--primary); margin-top: 0; }
-    .shortcut { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.9em; }
+    .help-section { margin-bottom: 30px; }
+    .help-card { 
+      background: #fff; border: 1px solid var(--border); border-radius: var(--radius); 
+      padding: 20px; margin-bottom: 16px; 
+    }
+    .help-title { font-size: 18px; font-weight: 700; color: var(--navy); margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+    .help-step { margin-bottom: 12px; display: flex; gap: 12px; }
+    .step-num { 
+      width: 24px; height: 24px; border-radius: 50%; background: var(--navy); color: #fff; 
+      display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0;
+    }
+    .faq-item { border-bottom: 1px solid var(--border); padding: 12px 0; }
+    .faq-q { font-weight: 600; color: var(--navy); cursor: pointer; display: flex; justify-content: space-between; }
+    .faq-a { font-size: 14px; color: var(--text-secondary); margin-top: 8px; line-height: 1.6; }
   </style>
 </head>
 <body>
@@ -30,10 +39,25 @@
       <a href="/blog.html" class="nav-item"><span class="nav-icon">✍️</span> Blog</a>
       <a href="/forum.html" class="nav-item"><span class="nav-icon">💬</span> Forum</a>
       <a href="/about.html" class="nav-item"><span class="nav-icon">ℹ️</span> About</a>
-      <a href="/help.html" class="nav-item active"><span class="nav-icon">❓</span> Help</a>
       <a href="/profile.html" class="nav-item"><span class="nav-icon">👤</span> My Profile</a>
+      <a href="/help.html" class="nav-item active"><span class="nav-icon">❓</span> Help & Support</a>
+      <div id="execSection" class="hidden">
+        <div class="nav-section-label">Management</div>
+        <a href="/events.html" class="nav-item"><span class="nav-icon">⚙️</span> Manage Events</a>
+        <a href="/finances.html" class="nav-item"><span class="nav-icon">⚙️</span> Manage Finances</a>
+        <a href="/blog.html" class="nav-item"><span class="nav-icon">⚙️</span> Manage Blog</a>
+      </div>
+      <div id="adminSection" class="hidden">
+        <div class="nav-section-label">Admin</div>
+        <a href="/admin.html" class="nav-item" data-page="admin.html"><span class="nav-icon">👥</span> Manage Users</a>
+        <a href="/audit-logs.html" class="nav-item" data-page="audit-logs.html"><span class="nav-icon">📜</span> Audit Logs</a>
+      </div>
     </nav>
     <div class="sidebar-footer">
+      <div class="user-info-box">
+        <div class="user-avatar" id="userAvatar">?</div>
+        <div><div class="user-name" id="userName">...</div><div class="user-role" id="userRole">member</div></div>
+      </div>
       <button class="btn btn-danger w-full btn-sm" onclick="logout()">← Logout</button>
     </div>
   </aside>
@@ -41,52 +65,67 @@
   <div class="main-wrapper">
     <header class="topbar">
       <div>
-        <div class="topbar-title">Help & Documentation</div>
-        <div class="topbar-subtitle">Learn how to navigate and use the TUKAC Portal</div>
+        <div class="topbar-title">Help & Support</div>
+        <div class="topbar-subtitle">User manual and frequently asked questions</div>
       </div>
     </header>
-    <main class="main-content">
-      <div class="help-section">
-        <h2>Getting Started</h2>
-        <div class="help-card">
-          <h3>Registration & Login</h3>
-          <p>New members must register using their TUK Student ID and a valid email address. After registration, your account must be approved by the Chairperson before you can access the portal features.</p>
-          <p>If you forget your password, use the "Forgot Password" link on the login page to reset it using your Email and Student ID.</p>
-        </div>
-      </div>
 
+    <main class="main-content" style="max-width: 900px;">
       <div class="help-section">
-        <h2>Key Features</h2>
-        <div class="grid grid-cols-2 gap-6">
-          <div class="help-card">
-            <h3>📅 Event Management</h3>
-            <p>View upcoming club events and RSVP to confirm your attendance. Executives can create, edit, and delete events. Reports on event attendance can be generated from the admin panel.</p>
+        <div class="help-title">🚀 Getting Started</div>
+        <div class="help-card">
+          <div class="help-step">
+            <div class="step-num">1</div>
+            <div><strong>Registration:</strong> New members must register with their Student ID and wait for Admin approval.</div>
           </div>
-          <div class="help-card">
-            <h3>💰 Financial Tracking</h3>
-            <p>The finances section displays the club's income and expenses. Members can view the current balance, while the Treasurer and Chairperson can record new transactions and export financial reports.</p>
+          <div class="help-step">
+            <div class="step-num">2</div>
+            <div><strong>Profile Setup:</strong> Upload your passport photo and update your contact details in the "My Profile" section.</div>
           </div>
-          <div class="help-card">
-            <h3>✍️ Blog & Forum</h3>
-            <p>Stay updated with club news via the Blog. Engage with other members in the Forum by starting discussions or commenting on existing posts.</p>
-          </div>
-          <div class="help-card">
-            <h3>👤 Profile & Disability Info</h3>
-            <p>Keep your profile updated, especially your contact information and NCPWD details. This helps the club provide better support tailored to your needs.</p>
+          <div class="help-step">
+            <div class="step-num">3</div>
+            <div><strong>Engage:</strong> Join the "Student Forum" to start discussions or RSVP to upcoming events.</div>
           </div>
         </div>
       </div>
 
       <div class="help-section">
-        <h2>For Executives & Admins</h2>
+        <div class="help-title">🛡️ User Roles & Privileges</div>
         <div class="help-card">
-          <h3>Reporting</h3>
-          <p>You can generate professional PDF reports for the membership list and financial statements. Look for the "Export PDF" buttons in the Manage Users and Finances sections.</p>
+          <table style="width:100%; font-size:13px;">
+            <thead><tr style="text-align:left; border-bottom:1px solid var(--border);"><th style="padding:10px 0;">Role</th><th>Privileges</th></tr></thead>
+            <tbody>
+              <tr style="border-bottom:1px solid var(--border);"><td style="padding:10px 0;"><strong>Chairperson</strong></td><td>Full system control, User management, Audit logs, PDF Reports.</td></tr>
+              <tr style="border-bottom:1px solid var(--border);"><td style="padding:10px 0;"><strong>Vice Chairperson</strong></td><td>Full administrative rights as backup, User management, Audit logs.</td></tr>
+              <tr style="border-bottom:1px solid var(--border);"><td style="padding:10px 0;"><strong>Treasurer</strong></td><td>Record income/expenses, view financial summaries and reports.</td></tr>
+              <tr style="border-bottom:1px solid var(--border);"><td style="padding:10px 0;"><strong>Secretary</strong></td><td>Publish blog posts, manage events, and update club news.</td></tr>
+              <tr><td style="padding:10px 0;"><strong>Member</strong></td><td>RSVP to events, participate in forum, view blogs and profile.</td></tr>
+            </tbody>
+          </table>
         </div>
+      </div>
+
+      <div class="help-section">
+        <div class="help-title">❓ Frequently Asked Questions</div>
         <div class="help-card">
-          <h3>System Audit Trail</h3>
-          <p>Every critical action (logins, financial changes, role updates) is logged in the system for security and transparency. These logs are available to the Chairperson for auditing purposes.</p>
+          <div class="faq-item">
+            <div class="faq-q">How do I reset my password?</div>
+            <div class="faq-a">Contact the Club Chairperson or Secretary. They can reset your password from the Admin Panel.</div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-q">Where can I see the activity logs?</div>
+            <div class="faq-a">The Chairperson and Vice Chairperson can view logs under "Admin > Audit Logs" to monitor system security.</div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-q">Is my data secure?</div>
+            <div class="faq-a">Yes, all passwords are encrypted using BCrypt, and every transaction is logged for accountability.</div>
+          </div>
         </div>
+      </div>
+
+      <div class="help-section" style="text-align:center; padding:40px 0;">
+        <div style="font-size:13px; color:var(--text-muted);">TUKAC Web Portal &copy; 2026</div>
+        <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">Technical University of Kenya Accessibility Club</div>
       </div>
     </main>
   </div>
@@ -94,10 +133,7 @@
 
 <script src="/js/api.js"></script>
 <script>
-  if (!requireAuth()) {}
-  document.addEventListener('DOMContentLoaded', () => {
-    initSidebar();
-  });
+  initSidebar();
 </script>
 </body>
 </html>

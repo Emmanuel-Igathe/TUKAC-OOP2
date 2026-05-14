@@ -54,7 +54,7 @@
   --radius-sm: 8px;
   --shadow:    0 4px 16px rgba(0,0,0,0.08);
   --shadow-sm: 0 2px 6px rgba(0,0,0,0.05);
-  --transition: all 0.2s ease;
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* === Reset === */
@@ -249,6 +249,30 @@ select.form-control option { background: #fff; }
   border-right: none;
   display: flex; flex-direction: column;
   flex-shrink: 0; overflow-y: auto;
+  transition: var(--transition);
+  position: relative;
+}
+.sidebar.collapsed {
+  width: 70px;
+}
+.sidebar.collapsed .brand-text,
+.sidebar.collapsed .brand-subtitle,
+.sidebar.collapsed .nav-text,
+.sidebar.collapsed .nav-section-label,
+.sidebar.collapsed .user-name,
+.sidebar.collapsed .user-role {
+  display: none;
+}
+.sidebar.collapsed .nav-item {
+  justify-content: center;
+  padding: 12px;
+}
+.sidebar.collapsed .sidebar-brand {
+  justify-content: center;
+}
+.sidebar.collapsed .user-info-box {
+  justify-content: center;
+  padding: 8px;
 }
 
 .sidebar-header {
@@ -321,8 +345,18 @@ select.form-control option { background: #fff; }
   border-bottom: 3px solid var(--gold);
   display: flex; align-items: center;
   justify-content: space-between;
-  padding: 0 28px; flex-shrink: 0;
+  padding: 0 20px; flex-shrink: 0;
 }
+.topbar-left { display: flex; align-items: center; gap: 15px; }
+.sidebar-toggle {
+  background: rgba(255,255,255,0.1);
+  border: none; color: #fff;
+  width: 36px; height: 36px;
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; transition: var(--transition);
+}
+.sidebar-toggle:hover { background: var(--gold); }
 .topbar-title    { font-size: 18px; font-weight: 700; color: #fff; }
 .topbar-subtitle { font-size: 12px; color: rgba(255,255,255,0.6); }
 
@@ -496,6 +530,21 @@ tr:last-child td { border-bottom: none; }
 .text-muted   { color: var(--text-muted); }
 .text-white   { color: #fff; }
 .w-full { width: 100%; }
+
+/* === Footer === */
+.app-footer {
+  padding: 20px 28px;
+  background: #fff;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.footer-links { display: flex; gap: 20px; }
+.footer-links a { color: var(--text-muted); }
+.footer-links a:hover { color: var(--navy); }
 
 /* === Responsive === */
 @media (max-width: 768px) {

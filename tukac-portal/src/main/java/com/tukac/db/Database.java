@@ -101,6 +101,19 @@ public class Database {
                 )
             """);
 
+            // Activity Logs table
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS activity_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    user_name TEXT,
+                    action TEXT,
+                    details TEXT,
+                    ip_address TEXT,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """);
+
             // Default admin
             stmt.execute("""
                 INSERT OR IGNORE INTO users (name, student_id, email, password, role, is_approved)

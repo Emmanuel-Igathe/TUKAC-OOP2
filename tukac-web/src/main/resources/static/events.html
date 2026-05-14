@@ -26,15 +26,17 @@
       <a href="/forum.html" class="nav-item" data-page="forum.html"><span class="nav-icon">💬</span> Forum</a>
       <a href="/about.html" class="nav-item" data-page="about.html"><span class="nav-icon">ℹ️</span> About</a>
       <a href="/profile.html" class="nav-item" data-page="profile.html"><span class="nav-icon">👤</span> My Profile</a>
+      <a href="/help.html" class="nav-item" data-page="help.html"><span class="nav-icon">❓</span> Help & Support</a>
       <div id="execSection" class="hidden">
         <div class="nav-section-label">Management</div>
-        <a href="/events.html" class="nav-item" data-page="events.html"><span class="nav-icon">⚙️</span> Manage Events</a>
+        <a href="/events.html" class="nav-item active" data-page="events.html"><span class="nav-icon">⚙️</span> Manage Events</a>
         <a href="/finances.html" class="nav-item" data-page="finances.html"><span class="nav-icon">⚙️</span> Manage Finances</a>
         <a href="/blog.html" class="nav-item" data-page="blog.html"><span class="nav-icon">⚙️</span> Manage Blog</a>
       </div>
       <div id="adminSection" class="hidden">
         <div class="nav-section-label">Admin</div>
         <a href="/admin.html" class="nav-item" data-page="admin.html"><span class="nav-icon">👥</span> Manage Users</a>
+        <a href="/audit-logs.html" class="nav-item" data-page="audit-logs.html"><span class="nav-icon">📜</span> Audit Logs</a>
       </div>
     </nav>
     <div class="sidebar-footer">
@@ -52,7 +54,10 @@
         <div class="topbar-title">Events</div>
         <div class="topbar-subtitle">Club events and activities</div>
       </div>
-      <button class="btn btn-primary btn-sm hidden" id="createEventBtn" onclick="openCreateModal()">+ Create Event</button>
+      <div class="flex gap-2">
+        <input type="text" id="eventSearch" class="form-control form-control-sm" placeholder="Search events..." style="width:200px;" oninput="debounceSearch()">
+        <button class="btn btn-primary btn-sm hidden" id="createEventBtn" onclick="openCreateModal()">+ Create Event</button>
+      </div>
     </header>
 
     <main class="main-content">
@@ -125,11 +130,18 @@
     loadEvents();
   });
 
+  let searchTimeout;
+  function debounceSearch() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => loadEvents(), 500);
+  }
+
   async function loadEvents() {
     const grid = document.getElementById('eventsGrid');
     setLoading(grid, 'Loading events...');
 
-    const res = await api.get('/events');
+    const query = document.getElementById('eventSearch')?.value || '';
+    const res = await api.get(`/events?search=${encodeURIComponent(query)}`);
     if (!res || !res.data.success) {
       setEmpty(grid, '📅', 'Could not load events', res?.data?.message);
       return;
@@ -150,16 +162,17 @@
           <span>👥 ${e.rsvpCount} RSVP${e.rsvpCount !== 1 ? 's' : ''}${e.capacity > 0 ? ' / ' + e.capacity : ''}</span>
         </div>
         ${e.description ? `<p class="event-desc">${escHtml(e.description)}</p>` : ''}
-        <div class="event-footer">
+        <div class="event-footer" style="flex-direction: column; align-items: flex-start; gap: 10px;">
           <button class="btn btn-sm ${e.isRsvped ? 'btn-danger' : 'btn-primary'}" 
                   id="rsvp-btn-${e.id}"
+                  style="width: 100%;"
                   onclick="toggleRsvp(${e.id}, this)">
             ${e.isRsvped ? '✓ Cancel RSVP' : '+ RSVP'}
           </button>
           ${isExec ? `
-            <div class="flex gap-2">
-              <button class="btn btn-outline btn-sm" onclick="openEditModal(${JSON.stringify(e).replace(/"/g, '&quot;')})">✏️ Edit</button>
-              <button class="btn btn-danger btn-sm" onclick="deleteEvent(${e.id})">🗑</button>
+            <div class="flex gap-2 w-full" style="border-top: 1px solid var(--border); padding-top: 10px; margin-top: 2px;">
+              <button class="btn btn-outline btn-sm" style="flex:1" onclick="openEditModal(${JSON.stringify(e).replace(/"/g, '&quot;')})">✏️ Edit</button>
+              <button class="btn btn-danger btn-sm" style="flex:1" onclick="deleteEvent(${e.id})">🗑 Delete</button>
             </div>` : ''}
         </div>
       </div>`).join('');
