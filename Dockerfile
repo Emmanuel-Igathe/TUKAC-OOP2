@@ -14,8 +14,8 @@ WORKDIR /app
 RUN mkdir bin
 COPY --from=build /app/tukac-web/target/tukac-web-1.0.0.jar bin/app.jar
 
-# Copy the initial database file to the /app directory
-COPY tukac.db .
+# Ensure the database file exists (it will be created if it doesn't)
+RUN touch tukac.db
 
 # Expose the port
 EXPOSE 8080
