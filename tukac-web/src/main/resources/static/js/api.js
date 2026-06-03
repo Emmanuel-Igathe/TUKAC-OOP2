@@ -23,8 +23,16 @@ function clearSession() {
   localStorage.removeItem('tukac_user');
 }
 
+function isValidJwt(token) {
+  if (!token) return false;
+  const parts = token.split('.');
+  return parts.length === 3 && parts.every(p => p.length > 0);
+}
+
 function requireAuth() {
-  if (!getToken()) {
+  const token = getToken();
+  if (!isValidJwt(token)) {
+    clearSession();
     window.location.href = '/login.html';
     return false;
   }
@@ -54,7 +62,10 @@ async function apiCall(endpoint, options = {}) {
       headers
     });
 
-    if (response.status === 401) {
+    console.log(`[API] ${options.method || 'GET'} ${endpoint} → ${response.status}`);
+
+    if (response.status === 401 || response.status === 403) {
+      console.warn(`[API] Auth failed (${response.status}) for ${endpoint}. Clearing session.`);
       clearSession();
       window.location.href = '/login.html';
       return null;
@@ -222,3 +233,14 @@ function logout() {
   clearSession();
   window.location.href = '/login.html';
 }
+
+// Automatically load voice assistant & accessibility controls on DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+  if (!document.getElementById('tukac-voice-assistant-script')) {
+    const script = document.createElement('script');
+    script.id = 'tukac-voice-assistant-script';
+    script.src = '/js/voice-assistant.js';
+    document.body.appendChild(script);
+  }
+});
+
